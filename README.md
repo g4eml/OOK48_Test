@@ -4,7 +4,7 @@
 
 Test device for OOK48 Protocol. 
 
-Constantly sends the test message 'OOK48 Test'
+Constantly sends the test message 'OOK48 TEST'
 
 Key Output on Pin 6
 
