@@ -45,7 +45,7 @@ void ookTick(void)
       if(ookBitPointer > 8)
         {
           ookBitPointer = 0;
-          ookPointer++;
+          if((halfRate == false ) || (halfRate & (seconds & 0x01) )) ookPointer++; 
         }
   }
 }

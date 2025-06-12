@@ -41,6 +41,8 @@ bool ookKey;
 bool ookActive;
 int ookTime;
 
+bool halfRate = false;
+
 uint8_t ookMessLen;
 
 int seconds =0;
@@ -189,6 +191,15 @@ void loop()
     {
       digitalWrite(KEYOUTPIN,0);
     }
+
+  if(digitalRead(LINK2PIN) == 0)
+  {
+    halfRate = true;
+  }
+  else 
+  {
+    halfRate = false;
+  }
 
 }
 
