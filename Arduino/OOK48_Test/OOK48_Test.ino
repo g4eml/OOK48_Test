@@ -7,8 +7,8 @@
 
 #define MESSAGE "OOK48 TEST"
 
-#define LINK1PIN 10
-#define LINK2PIN 11
+#define LINK1PIN 10           //Selects Tone Keyer Mode for testing an externally generated key signal
+#define LINK2PIN 11           //Selects 2 Second Encoding.
 #define LINK3PIN 12
 #define LINK4PIN 13
 
@@ -18,6 +18,10 @@
 #define KEYINPIN 7
 #define PPSOUTPUT 8
 
+#define GPSRXPin 5
+#define GPSTXPin 4
+
+#define GPSBAUD 9600
 
 #define TWOP32 4294967296                //2^32 Accumulator Length
 #define DDSFREQ 250000.00                 //DDS update frequency
@@ -45,8 +49,10 @@ bool halfRate = false;
 
 uint8_t ookMessLen;
 
-int seconds =0;
 int milliseconds =0;
+int seconds =0;
+int minutes =0;
+int hours =10;
 
 struct repeating_timer DDStimer;
 struct repeating_timer symbolTimer;
@@ -105,6 +111,7 @@ void setup()
     mode = GEN;
   }
 
+
     pinMode(KEYOUTPIN,OUTPUT);
     digitalWrite(KEYOUTPIN,0);
     pinMode(PPSOUTPUT,OUTPUT);
@@ -122,7 +129,7 @@ void setup()
   ookMessLen = strlen(ookMessage);
 
 
-  //preset the parameters fro the PWM update here, to save time in the interrupt routine. 
+  //preset the parameters for the PWM update here, to save time in the interrupt routine. 
 
   tonegpioslice = pwm_gpio_to_slice_num(TONEOUTPIN);
   tonegpiochan = pwm_gpio_to_channel(TONEOUTPIN);
@@ -145,31 +152,9 @@ void setup()
 }
 
 
-//Core 0 loop. Main timing loop. 
+//Core 0 loop. Main encoding loop. 
 void loop()
 {
-  static unsigned long loopTimer = micros() + 1000;
-
-  while(loopTimer == millis());          //hang waiting for the next 1mS timeslot
-  loopTimer = millis();
-
-  
-
-     milliseconds++;
-     if(milliseconds == 1000)
-      {
-        digitalWrite(PPSOUTPUT,1);                  //generate the 1PPS pulse
-        delayMicroseconds(1);
-        digitalWrite(PPSOUTPUT,0);
-        ookActive = true;
-        seconds++;
-        milliseconds = 0;
-        if(seconds == 60)
-          {
-            seconds = 0;
-          }
-      }
-
   if(mode == KEY)
    {
     if(digitalRead(KEYINPIN))
@@ -209,4 +194,54 @@ uint32_t getInc(double freq)
   return TWOP32/(DDSFREQ / freq);
 }
 
+//Core 1 handles the Clock and GPS simulation
+void setup1()
+{
+  Serial2.setRX(GPSRXPin);              //Configure the GPIO pins for the GPS module
+  Serial2.setTX(GPSTXPin);
+  Serial2.begin(GPSBAUD);                        
+}
 
+void loop1()
+{
+   static unsigned long loopTimer = micros() + 1000;
+
+  while(loopTimer == millis());          //hang waiting for the next 1mS timeslot
+  loopTimer = millis();
+
+     milliseconds++;
+     if(milliseconds == 1000)
+      {
+        digitalWrite(PPSOUTPUT,1);                  //generate the 1PPS pulse
+        delayMicroseconds(1);
+        digitalWrite(PPSOUTPUT,0);
+        ookActive = true;
+        seconds++;
+        milliseconds = 0;
+        if(seconds == 60)
+          {
+            seconds = 0;
+            minutes++;
+            if(minutes ==60)
+             {
+              hours++;
+               if(hours == 24)
+                {
+                  hours = 0;
+                }
+             }
+          }
+      }
+
+      if(milliseconds == 200)
+       {
+        sendNMEA();
+       }
+}
+
+void sendNMEA(void)
+{
+  char nmea[100];
+  sprintf(nmea,"$GPRMC,%02d%02d%02d,A,5120.000,N,00030.000,E,000.0,000.0,010425,000.0,E*00\n",hours,minutes,seconds);
+  Serial2.write(nmea);
+}
