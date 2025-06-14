@@ -204,12 +204,11 @@ void setup1()
 
 void loop1()
 {
-   static unsigned long loopTimer = micros() + 1000;
+  static unsigned long loopTimer = millis() + 100;
+  while(loopTimer >  millis());          //hang waiting for the next 100mS timeslot
+  loopTimer = millis() + 100;
 
-  while(loopTimer == millis());          //hang waiting for the next 1mS timeslot
-  loopTimer = millis();
-
-     milliseconds++;
+     milliseconds = milliseconds + 100;
      if(milliseconds == 1000)
       {
         digitalWrite(PPSOUTPUT,1);                  //generate the 1PPS pulse
@@ -233,7 +232,7 @@ void loop1()
           }
       }
 
-      if(milliseconds == 200)
+      if(milliseconds == 100)
        {
         sendNMEA();
        }
@@ -242,6 +241,6 @@ void loop1()
 void sendNMEA(void)
 {
   char nmea[100];
-  sprintf(nmea,"$GPRMC,%02d%02d%02d,A,5120.000,N,00030.000,E,000.0,000.0,010425,000.0,E*00\n",hours,minutes,seconds);
+  sprintf(nmea,"$GPRMC,%02d%02d%02d,A,5120.000,N,00030.000,E,000.0,000.0,010425,000.0,E*00\n\r",hours,minutes,seconds);
   Serial2.write(nmea);
 }
