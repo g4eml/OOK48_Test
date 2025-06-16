@@ -4,7 +4,7 @@
 
 Test device for OOK48 Protocol. 
 
-Message is user configurable using the USB Serial port. Just run any terminal program, enter CR and then pollow the prompt. 
+Message is user configurable using the USB Serial port. Just run any terminal program, enter CR and then follow the prompt. 
 
 Key Output on Pin 6
 
