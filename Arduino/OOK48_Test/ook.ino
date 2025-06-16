@@ -36,6 +36,7 @@ void ookTick(void)
       if(ookBitPointer == 8)
         {
           ookKey = 0;
+          ookActive = false;              //wait for the next 1PPS
         }
       else
         {

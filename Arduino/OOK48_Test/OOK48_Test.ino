@@ -10,13 +10,13 @@
 #define LINK1PIN 10           //Selects Tone Keyer Mode for testing an externally generated key signal
 #define LINK2PIN 11           //Selects 2 Second Encoding.
 #define LINK3PIN 12
-#define LINK4PIN 13
+#define LINK4PIN 13           //Selects real GPS module is fitted. Stand alone operation
 
 #define TONEOUTPIN 2
 #define NOISEOUTPIN 3
 #define KEYOUTPIN 6
 #define KEYINPIN 7
-#define PPSOUTPUT 8
+#define PPSPIN 8
 
 #define GPSRXPin 5
 #define GPSTXPin 4
@@ -46,6 +46,7 @@ bool ookActive;
 int ookTime;
 
 bool halfRate = false;
+bool realGPS = false;
 
 uint8_t ookMessLen;
 
@@ -59,6 +60,10 @@ struct repeating_timer symbolTimer;
 
 uint8_t mode;
 enum modetype{GEN,KEY};
+
+char gpsCh;
+char gpsBuffer[256];                     //GPS data buffer
+int gpsPointer;                          //GPS buffer pointer
 
 //Interrupt called every 4us (250 KHz) to update the DDS and PWM outputs. 
 bool DDS_interrupt(struct repeating_timer *t)
@@ -88,6 +93,15 @@ bool symbol_interrupt(struct repeating_timer *t)
   return true;
 }
 
+//interrupt routine for 1 Pulse per second input
+void ppsISR(void)
+{
+ cancel_repeating_timer(&symbolTimer);                           //Stop the symbol timer if it is running. 
+ add_repeating_timer_us(-OOK_DELAY,symbol_interrupt,NULL,&symbolTimer); //restart the symbol timer
+ ookActive = true;
+ ookTick();
+}
+
 void setup() 
 {
   Serial.begin();
@@ -111,12 +125,31 @@ void setup()
     mode = GEN;
   }
 
+    if(digitalRead(LINK4PIN) == 0)
+  {
+    realGPS = true;
+  }
+  else 
+  {
+    realGPS = false;
+  }
+
+
 
     pinMode(KEYOUTPIN,OUTPUT);
     digitalWrite(KEYOUTPIN,0);
-    pinMode(PPSOUTPUT,OUTPUT);
-    digitalWrite(PPSOUTPUT,0);
-    pinMode(KEYINPIN,INPUT_PULLUP);   
+    pinMode(KEYINPIN,INPUT_PULLUP); 
+
+    if(realGPS)
+    {
+      pinMode(PPSPIN,INPUT);
+    }
+    else 
+    {
+      pinMode(PPSPIN,OUTPUT);
+      digitalWrite(PPSPIN,0); 
+    }
+ 
 
   for(int i = 0; i < 256; i++)
     {
@@ -149,6 +182,11 @@ void setup()
 
 // start a repeating timer interrupt every for the Symbol Rate
  add_repeating_timer_us(-OOK_DELAY,symbol_interrupt,NULL,&symbolTimer);
+
+ if(realGPS)
+   {
+     attachInterrupt(PPSPIN,ppsISR,RISING);
+   }
 }
 
 
@@ -199,22 +237,44 @@ void setup1()
 {
   Serial2.setRX(GPSRXPin);              //Configure the GPIO pins for the GPS module
   Serial2.setTX(GPSTXPin);
-  Serial2.begin(GPSBAUD);                        
+  Serial2.begin(GPSBAUD); 
+  gpsPointer = 0;                       
 }
 
 void loop1()
 {
-  static unsigned long loopTimer = millis() + 100;
-  while(loopTimer >  millis());          //hang waiting for the next 100mS timeslot
-  loopTimer = millis() + 100;
+ static unsigned long loopTimer = millis() + 100;
+ if(realGPS)
+  {
+      if(Serial2.available() > 0)           //data received from GPS module
+      {
+        while(Serial2.available() >0)
+          {
+            gpsCh=Serial2.read();
+            if(gpsCh > 31) gpsBuffer[gpsPointer++] = gpsCh;
+            if((gpsCh == 13) || (gpsPointer > 255))
+              {
+                gpsBuffer[gpsPointer] = 0;
+                processNMEA();
+                gpsPointer = 0;
+              }
+          }
+
+      }
+  }
+
+  else                  //simulate the GPS receiver
+   {
+    while(loopTimer >  millis());          //hang waiting for the next 100mS timeslot
+    loopTimer = millis() + 100;
 
      milliseconds = milliseconds + 100;
      if(milliseconds == 1000)
       {
-        digitalWrite(PPSOUTPUT,1);                  //generate the 1PPS pulse
+        digitalWrite(PPSPIN,1);                  //generate the 1PPS pulse
         delayMicroseconds(1);
-        digitalWrite(PPSOUTPUT,0);
-        ookActive = true;
+        digitalWrite(PPSPIN,0);
+        ppsISR();                                 //simulate an interrupt
         seconds++;
         milliseconds = 0;
         if(seconds == 60)
@@ -236,6 +296,7 @@ void loop1()
        {
         sendNMEA();
        }
+   }
 }
 
 void sendNMEA(void)
@@ -243,4 +304,29 @@ void sendNMEA(void)
   char nmea[100];
   sprintf(nmea,"$GPRMC,%02d%02d%02d,A,5120.000,N,00030.000,E,000.0,000.0,010425,000.0,E*00\n\r",hours,minutes,seconds);
   Serial2.write(nmea);
+}
+
+void processNMEA(void)
+{
+  float gpsTime;
+
+ if(strstr(gpsBuffer , "RMC") != NULL)                         //is this the RMC sentence?
+  {
+    if(strstr(gpsBuffer , "A") != NULL)                       // is the data valid?
+      {
+       int p=strcspn(gpsBuffer , ",");                         // find the first comma
+       gpsTime = strtof(gpsBuffer+p+1 , NULL);                 //copy the time to a floating point number
+       seconds = int(gpsTime) % 100;
+       gpsTime = gpsTime / 100;
+       minutes = int(gpsTime) % 100; 
+       gpsTime = gpsTime / 100;
+       hours = int(gpsTime) % 100;         
+      }
+    else
+     {
+       seconds = -1;                                            //GPS time not valid
+       minutes = -1;
+       hours = -1;
+     }
+  }
 }
