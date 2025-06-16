@@ -4,7 +4,7 @@
 
 Test device for OOK48 Protocol. 
 
-Constantly sends the test message 'OOK48 TEST'
+Message is user configurable using the USB Serial port. Just run any terminal program, enter CR and then pollow the prompt. 
 
 Key Output on Pin 6
 
@@ -12,11 +12,20 @@ Key Output on Pin 6
 
 Random Noise on Pin 3
 
-1PPS sync signal output on Pin 7. Simulates the GPS 1PPS signal. 
+1PPS sync signal input or output on Pin 7.
+
+GPS NMEA input and output on Pins 4 and 5.
 
 Key Input on Pin 8 can be used by fitting link to pin 10. Key input then directly controls the Tone Output. Used for testing the Tx side of a device. 
 
-Fit link from Pin 11 to select 2 second mode.  Note this has a 50% chance of working as it needs to be in sync with the receiver. You may need to remove and refit the link a couple of times until it works. 
+Fit link from Pin 11 to select 2 second mode.
+
+Fit link from Pin 13 to ground when connecting a real GPS module. Unit can then be used as a stand alond beacon generator.
+If no link is fitted to pin 13 then the module will simulate a GPS module and output the 1PPS pulse and fake NMEA data. 
+
+
+
+
 
 
 
