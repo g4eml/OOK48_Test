@@ -16,12 +16,12 @@ Random Noise on Pin 3
 
 GPS NMEA input and output on Pins 4 and 5.
 
-Key Input on Pin 8 can be used by fitting link to pin 10. Key input then directly controls the Tone Output. Used for testing the Tx side of a device. 
+Key Input on Pin 8 can be used by fitting link from pin 10 to ground. Key input then directly controls the Tone Output. Used for testing the Tx side of a device. 
 
-Fit link from Pin 11 to select 2 second mode.
+Fit link from Pin 11 to ground to select 2 second mode.
 
 Fit link from Pin 13 to ground when connecting a real GPS module. Unit can then be used as a stand alond beacon generator.
-If no link is fitted to pin 13 then the module will simulate a GPS module and output the 1PPS pulse and fake NMEA data. 
+If no link is fitted to pin 13 then the module will simulate a GPS module and output the 1PPS pulse and fake NMEA 9600 Baud data. 
 
 
 
