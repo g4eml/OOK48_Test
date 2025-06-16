@@ -4,8 +4,9 @@
 #include <stdio.h>
 #include "hardware/pwm.h"
 #include "pico/stdlib.h"
+#include <EEPROM.h>
 
-#define MESSAGE "OOK48 TEST"
+#define DEFAULTMESSAGE "OOK48 TEST"
 
 #define LINK1PIN 10           //Selects Tone Keyer Mode for testing an externally generated key signal
 #define LINK2PIN 11           //Selects 2 Second Encoding.
@@ -30,7 +31,7 @@
 
 int8_t sineTable[256];
 
-uint8_t ookBuffer[30];
+uint8_t ookBuffer[34];
 char ookMessage[34];              //allow for adding sync chars if needed
 
 uint32_t DDSAcc;                     //32 bit accumulator
@@ -105,6 +106,8 @@ void ppsISR(void)
 void setup() 
 {
   Serial.begin();
+  EEPROM.begin(256);
+  getMessage();
   analogWriteFreq(200000);                 //PWM frequency is 200KHz
   analogWriteRange(256);                  //8 bit PWM range
   analogWrite(TONEOUTPIN,128);                //initially set 50%
@@ -157,9 +160,8 @@ void setup()
     }
 
   DDSAcc = 0;
-  
-  strcpy(ookMessage , MESSAGE);
-  ookMessLen = strlen(ookMessage);
+
+
 
 
   //preset the parameters for the PWM update here, to save time in the interrupt routine. 
@@ -193,6 +195,10 @@ void setup()
 //Core 0 loop. Main encoding loop. 
 void loop()
 {
+  char sc;
+  int chCount;
+  bool done;
+
   if(mode == KEY)
    {
     if(digitalRead(KEYINPIN))
@@ -223,7 +229,41 @@ void loop()
   {
     halfRate = false;
   }
-
+  
+  if(Serial.available() > 0)
+   {
+    while(Serial.available() > 0)         //flush out any input buffer.
+     {
+      sc = Serial.read();
+     }
+    Serial.print("\n\nCurrent Message = ");
+    Serial.print(ookMessage);
+    Serial.print("\nEnter new message (up to 30 characters) -->");
+    chCount =0;
+    sc = 0;
+    done = false;
+    while((!done) & (chCount < 30))
+     {
+      while(Serial.available() == 0);
+      sc = Serial.read();
+      if((sc == 13)||(sc == 10))
+       {
+        done = true;
+       }
+      else
+       {
+        ookMessage[chCount++]= toupper(sc);
+        Serial.write(sc);
+       }
+     }
+    if(chCount > 0) ookMessage[chCount] = 0;
+    Serial.print("\nNew Message = ");
+    Serial.println(ookMessage);
+    ookMessLen = strlen(ookMessage);
+    saveMessage();
+    Serial.println("New Message Saved");
+    ookInit();
+   }
 }
 
 //returns the DDS accumulator increment requred for the given frequency
@@ -330,3 +370,25 @@ void processNMEA(void)
      }
   }
 }
+
+void getMessage(void)
+{
+   if(EEPROM.read(0)== 0x73)
+    {
+     EEPROM.get(1,ookMessage);
+    }
+   else
+    {
+    strcpy(ookMessage,DEFAULTMESSAGE);
+    saveMessage();
+    }
+    
+    ookMessLen = strlen(ookMessage);
+}
+
+void saveMessage(void)
+ {
+    EEPROM.put(1,ookMessage);
+    EEPROM.write(0,0x73);
+    EEPROM.commit();
+ }

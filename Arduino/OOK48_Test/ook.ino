@@ -22,6 +22,7 @@ void ookInit(void)
   ookMessLen = ook_encode(ookMessage , ookMessLen, ookBuffer);
   ookPointer = 0;
   ookBitPointer = 0;
+  ookActive = false;
 }
 
 void ookTick(void)
