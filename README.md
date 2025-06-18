@@ -12,11 +12,11 @@ Key Output on Pin 6
 
 Random Noise on Pin 3
 
-1PPS sync signal input or output on Pin 7.
+1PPS sync signal input or output on Pin 8.
 
 GPS NMEA output and input on Pins 4 and 5.
 
-Key Input on Pin 8 can be used by fitting link from pin 10 to ground. Key input then directly controls the Tone Output. Used for testing the Tx side of a device. 
+Key Input on Pin 7 can be used by fitting link from pin 10 to ground. Key input then directly controls the Tone Output. Used for testing the Tx side of a device. 
 
 Fit link from Pin 11 to ground to select 2 second mode.
 
