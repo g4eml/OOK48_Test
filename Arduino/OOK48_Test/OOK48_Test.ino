@@ -342,8 +342,26 @@ void loop1()
 void sendNMEA(void)
 {
   char nmea[100];
-  sprintf(nmea,"$GPRMC,%02d%02d%02d,A,5120.000,N,00030.000,E,000.0,000.0,010425,000.0,E*00\n\r",hours,minutes,seconds);
+  sprintf(nmea,"$GPRMC,%02d%02d%02d,A,5120.000,N,00030.000,E,000.0,000.0,010425,000.0,E",hours,minutes,seconds);
+  addChecksum(nmea,100);
   Serial2.write(nmea);
+}
+
+void addChecksum(char *sentence, size_t max_len) {
+    if (!sentence || sentence[0] != '$') {
+        return;
+    }
+
+    uint8_t checksum = 0;
+    for (size_t i = 1; sentence[i] != '\0' && sentence[i] != '*'; i++) {
+        checksum ^= (uint8_t)sentence[i];
+    }
+
+    size_t len = strlen(sentence);
+
+    if (len + 5 < max_len) {
+        snprintf(sentence + len, max_len - len, "*%02X\r\n", checksum);
+    }
 }
 
 void processNMEA(void)
